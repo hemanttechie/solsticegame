@@ -20,6 +20,7 @@ export default function App() {
   const [levels, setLevels] = useState<LevelData[]>(LEVELS);
   const [currentLevelIndex, setCurrentLevelIndex] = useState<number>(0);
   const [timeState, setTimeState] = useState<TimeState>('DAY');
+  const [difficulty, setDifficulty] = useState<'EASY' | 'NORMAL' | 'HARD'>('NORMAL');
   
   // Scoring & Stats
   const [unlockedLevels, setUnlockedLevels] = useState<number[]>([1]);
@@ -68,6 +69,7 @@ export default function App() {
   const scoreRef = useRef<number>(0);
   const activePuzzleRef = useRef<boolean>(false);
   const infoOpenRef = useRef<boolean>(false);
+  const difficultyRef = useRef<'EASY' | 'NORMAL' | 'HARD'>('NORMAL');
   
   const playerRef = useRef<Player>({
     x: 0,
@@ -108,6 +110,10 @@ export default function App() {
         setIsMuted(parsedMute);
         sound.setMute(parsedMute);
       }
+      const storedDifficulty = localStorage.getItem('solstice_difficulty');
+      if (storedDifficulty) {
+        setDifficulty(storedDifficulty as 'EASY' | 'NORMAL' | 'HARD');
+      }
     } catch (e) {
       console.warn("Failed reading from localStorage", e);
     }
@@ -120,6 +126,16 @@ export default function App() {
     localStorage.setItem('solstice_muted', JSON.stringify(nextMute));
   };
 
+  const handleDifficultyChange = (newDiff: 'EASY' | 'NORMAL' | 'HARD') => {
+    setDifficulty(newDiff);
+    difficultyRef.current = newDiff;
+    try {
+      localStorage.setItem('solstice_difficulty', newDiff);
+    } catch (e) {
+      console.warn("Failed saving difficulty to localStorage", e);
+    }
+  };
+
   // Sync refs to make sure key inputs and loop reads always have fresh values
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -129,7 +145,8 @@ export default function App() {
     scoreRef.current = score;
     activePuzzleRef.current = activePuzzle !== null;
     infoOpenRef.current = showHowToPlay;
-  }, [gameState, currentLevelIndex, timeState, daylight, score, activePuzzle, showHowToPlay]);
+    difficultyRef.current = difficulty;
+  }, [gameState, currentLevelIndex, timeState, daylight, score, activePuzzle, showHowToPlay, difficulty]);
 
   // Setup level variables & spawn points when starting a new level
   const initLevel = (index: number) => {
@@ -149,8 +166,9 @@ export default function App() {
       flameIntensity: 1.0,
     };
 
-    setDaylight(100);
-    daylightRef.current = 100;
+    const startDaylight = difficultyRef.current === 'HARD' ? 80 : 100;
+    setDaylight(startDaylight);
+    daylightRef.current = startDaylight;
     setTimeState('DAY');
     timeStateRef.current = 'DAY';
     setCollectedInLevel([]);
@@ -396,8 +414,12 @@ export default function App() {
 
   // Daylight reduction helper
   const consumeDaylight = (amount: number, reason?: string) => {
+    const diff = difficultyRef.current;
+    const diffMultiplier = diff === 'EASY' ? 0.6 : diff === 'HARD' ? 1.4 : 1.0;
+    const adjustedAmount = amount * diffMultiplier;
+
     setDaylight((prev) => {
-      const next = Math.max(0, prev - amount);
+      const next = Math.max(0, prev - adjustedAmount);
       if (next <= 0) {
         // Trigger timeout defeat!
         setTimeout(() => triggerGameOver(false), 20);
@@ -1376,6 +1398,19 @@ export default function App() {
         <div className="flex items-center gap-3">
           {gameState === 'PLAYING' && (
             <>
+              <div className="hidden sm:flex items-center gap-2 mr-1 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800 transition">
+                <span className="text-xxs text-slate-400 uppercase font-semibold">Mode:</span>
+                <span className={`text-xs font-black font-mono tracking-wider ${
+                  difficulty === 'EASY' 
+                    ? 'text-emerald-400' 
+                    : difficulty === 'HARD' 
+                      ? 'text-rose-400' 
+                      : 'text-amber-400'
+                }`}>
+                  {difficulty === 'HARD' ? 'SOLSTICE' : difficulty}
+                </span>
+              </div>
+
               <div className="hidden md:flex items-center gap-4 mr-2 bg-slate-900/60 hover:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 transition">
                 <span className="text-xs text-slate-400 flex items-center gap-1">
                   <Compass className="w-3.5 h-3.5" /> Stage:
@@ -1507,6 +1542,60 @@ export default function App() {
                   <span>✨ Star fragments offer big score boosts</span>
                   <span>🔥 Sun fragments fuel your fire</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Difficulty Selector */}
+            <div className="w-full mb-8 max-w-2xl bg-slate-900/40 p-5 rounded-2xl border border-slate-800/85">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-indigo-400 mb-2 text-center">
+                Solstice Difficulty Mode
+              </h3>
+              <p className="text-center text-slate-400 text-xxs mb-4 leading-normal">
+                Determine the vitality of your Solstice Flame. Starting flame levels and daylight decay rates adapt based on this setting.
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  id="diff_easy_btn"
+                  onClick={() => handleDifficultyChange('EASY')}
+                  className={`p-3 rounded-xl border transition-all text-center flex flex-col items-center justify-center cursor-pointer ${
+                    difficulty === 'EASY'
+                      ? 'bg-emerald-950/60 border-emerald-500 text-emerald-300 shadow-lg shadow-emerald-950/40 scale-[1.02]'
+                      : 'bg-slate-950/60 border-slate-800/80 text-slate-500 hover:border-slate-700 hover:text-slate-300'
+                  }`}
+                >
+                  <Sun className="w-4 h-4 mb-1 text-emerald-400" />
+                  <span className="text-xs font-black font-mono tracking-wider">EASY</span>
+                  <span className="text-[10px] font-mono mt-0.5 opacity-80">100% Start</span>
+                  <span className="text-[9px] font-mono opacity-60">0.6x Decay</span>
+                </button>
+                <button
+                  id="diff_normal_btn"
+                  onClick={() => handleDifficultyChange('NORMAL')}
+                  className={`p-3 rounded-xl border transition-all text-center flex flex-col items-center justify-center cursor-pointer ${
+                    difficulty === 'NORMAL'
+                      ? 'bg-amber-950/60 border-amber-500 text-amber-300 shadow-lg shadow-amber-950/40 scale-[1.02]'
+                      : 'bg-slate-950/60 border-slate-800/80 text-slate-400 hover:border-slate-700 hover:text-slate-300'
+                  }`}
+                >
+                  <Sun className="w-4 h-4 mb-1 text-amber-400 animate-pulse" />
+                  <span className="text-xs font-black font-mono tracking-wider">NORMAL</span>
+                  <span className="text-[10px] font-mono mt-0.5 opacity-80">100% Start</span>
+                  <span className="text-[9px] font-mono opacity-60">1.0x Decay</span>
+                </button>
+                <button
+                  id="diff_hard_btn"
+                  onClick={() => handleDifficultyChange('HARD')}
+                  className={`p-3 rounded-xl border transition-all text-center flex flex-col items-center justify-center cursor-pointer ${
+                    difficulty === 'HARD'
+                      ? 'bg-rose-950/60 border-rose-500 text-rose-300 shadow-lg shadow-rose-950/40 scale-[1.02]'
+                      : 'bg-slate-950/60 border-slate-800/80 text-slate-500 hover:border-rose-300 hover:text-slate-350'
+                  }`}
+                >
+                  <Moon className="w-4 h-4 mb-1 text-rose-400" />
+                  <span className="text-xs font-black font-mono tracking-wider text-rose-300">SOLSTICE</span>
+                  <span className="text-[10px] font-mono mt-0.5 opacity-80">80% Start</span>
+                  <span className="text-[9px] font-mono opacity-60">1.4x Decay</span>
+                </button>
               </div>
             </div>
 
