@@ -1495,116 +1495,66 @@ export default function App() {
               The Sun is sinking on the longest day of the year. As the Keeper of the Solstice Flame, you must traverse changing landscape epochs of Light and Night to preserve cyclical eternity.
             </p>
 
-            {/* Quick overview panels */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mb-8">
-              {/* Controls guide */}
-              <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-830">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-500 mb-3 flex items-center gap-2">
-                  <Compass className="w-4 h-4" /> Solstice Controls
-                </h4>
-                <ul className="space-y-2 text-sm text-slate-300">
-                  <li className="flex justify-between border-b border-slate-800/40 pb-1.5">
-                    <span>Move Left / Right</span>
-                    <kbd className="px-2 py-0.5 rounded bg-slate-800 text-white border border-slate-705 text-xs font-mono">A / D or ◀ / ▶</kbd>
-                  </li>
-                  <li className="flex justify-between border-b border-slate-800/40 pb-1.5">
-                    <span>Jump / Double Jump</span>
-                    <kbd className="px-2 py-0.5 rounded bg-slate-800 text-white border border-slate-705 text-xs font-mono">W or Space</kbd>
-                  </li>
-                  <li className="flex justify-between border-b border-slate-800/40 pb-1.5">
-                    <span>Time Flip (Day ⇄ Night)</span>
-                    <kbd className="px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-mono text-xs font-bold">Shift or F</kbd>
-                  </li>
-                  <li className="flex justify-between border-b border-slate-800/40 pb-1.5">
-                    <span>Action / Read / Speak</span>
-                    <kbd className="px-2 py-0.5 rounded bg-slate-800 text-white border border-slate-705 text-xs font-mono">E or Enter</kbd>
-                  </li>
-                  <li className="flex justify-between text-rose-400">
-                    <span className="text-xs italic">*Movement & jumping consume flame daylight!</span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Solstice Lore mechanics */}
-              <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-830 flex flex-col justify-between">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-3 flex items-center gap-2">
-                    <HelpCircle className="w-4 h-4" /> Solstice Mechanics
-                  </h4>
-                  <p className="text-slate-300 text-xs leading-relaxed mb-2">
-                    ☀️ <strong className="text-amber-400 font-semibold">Day World:</strong> Golden barriers are active; press sun switches during daylight hours.
-                  </p>
-                  <p className="text-slate-300 text-xs leading-relaxed">
-                    🌙 <strong className="text-indigo-400 font-semibold">Night World:</strong> Deep amethyst stones emerge; step on bouncy mushrooms for celestial heights!
+            {/* NEW ORDER: 1) DIFFICULTY & 2) LEVELS */}
+            {/* Difficulty Selector (Compact) */}
+            <div className="w-full mb-4 bg-slate-900/40 p-3.5 rounded-xl border border-slate-800/85">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-2.5">
+                <div className="text-center md:text-left">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-400 to-indigo-400">
+                    Solstice Difficulty Mode
+                  </h3>
+                  <p className="text-slate-400 text-[10px] mt-0.5 leading-tight">
+                    Determine starting flame levels and decay multipliers.
                   </p>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400 font-semibold">
-                  <span>✨ Star fragments offer big score boosts</span>
-                  <span>🔥 Sun fragments fuel your fire</span>
+                
+                <div className="grid grid-cols-3 gap-2 w-full md:w-auto md:min-w-[420px]">
+                  <button
+                    id="diff_easy_btn"
+                    onClick={() => handleDifficultyChange('EASY')}
+                    className={`px-3 py-1.5 rounded-lg border transition-all text-center flex flex-col items-center justify-center cursor-pointer ${
+                      difficulty === 'EASY'
+                        ? 'bg-emerald-950/60 border-emerald-500 text-emerald-300 shadow-lg shadow-emerald-950/40'
+                        : 'bg-slate-950/60 border-slate-800/80 text-custom-gray hover:border-slate-750 hover:text-slate-300'
+                    }`}
+                  >
+                    <span className="text-[10px] font-black font-mono tracking-wider">EASY</span>
+                    <span className="text-[9px] font-mono opacity-80">100% Flame / 0.6x Decay</span>
+                  </button>
+                  <button
+                    id="diff_normal_btn"
+                    onClick={() => handleDifficultyChange('NORMAL')}
+                    className={`px-3 py-1.5 rounded-lg border transition-all text-center flex flex-col items-center justify-center cursor-pointer ${
+                      difficulty === 'NORMAL'
+                        ? 'bg-amber-950/60 border-amber-500 text-amber-300 shadow-lg shadow-amber-950/40'
+                        : 'bg-slate-950/60 border-slate-800/80 text-slate-400 hover:border-slate-750 hover:text-slate-300'
+                    }`}
+                  >
+                    <span className="text-[10px] font-black font-mono tracking-wider">NORMAL</span>
+                    <span className="text-[9px] font-mono opacity-80">100% Flame / 1.0x Decay</span>
+                  </button>
+                  <button
+                    id="diff_hard_btn"
+                    onClick={() => handleDifficultyChange('HARD')}
+                    className={`px-3 py-1.5 rounded-lg border transition-all text-center flex flex-col items-center justify-center cursor-pointer ${
+                      difficulty === 'HARD'
+                        ? 'bg-rose-950/60 border-rose-500 text-rose-300 shadow-lg shadow-rose-950/40'
+                        : 'bg-slate-950/60 border-slate-800/80 text-custom-gray hover:border-rose-450 hover:text-slate-350'
+                    }`}
+                  >
+                    <span className="text-[10px] font-black font-mono tracking-wider text-rose-300 font-semibold">SOLSTICE</span>
+                    <span className="text-[9px] font-mono opacity-80">80% Flame / 1.4x Decay</span>
+                  </button>
                 </div>
-              </div>
-            </div>
-
-            {/* Difficulty Selector */}
-            <div className="w-full mb-8 max-w-2xl bg-slate-900/40 p-5 rounded-2xl border border-slate-800/85">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-indigo-400 mb-2 text-center">
-                Solstice Difficulty Mode
-              </h3>
-              <p className="text-center text-slate-400 text-xxs mb-4 leading-normal">
-                Determine the vitality of your Solstice Flame. Starting flame levels and daylight decay rates adapt based on this setting.
-              </p>
-              <div className="grid grid-cols-3 gap-3">
-                <button
-                  id="diff_easy_btn"
-                  onClick={() => handleDifficultyChange('EASY')}
-                  className={`p-3 rounded-xl border transition-all text-center flex flex-col items-center justify-center cursor-pointer ${
-                    difficulty === 'EASY'
-                      ? 'bg-emerald-950/60 border-emerald-500 text-emerald-300 shadow-lg shadow-emerald-950/40 scale-[1.02]'
-                      : 'bg-slate-950/60 border-slate-800/80 text-slate-500 hover:border-slate-700 hover:text-slate-300'
-                  }`}
-                >
-                  <Sun className="w-4 h-4 mb-1 text-emerald-400" />
-                  <span className="text-xs font-black font-mono tracking-wider">EASY</span>
-                  <span className="text-[10px] font-mono mt-0.5 opacity-80">100% Start</span>
-                  <span className="text-[9px] font-mono opacity-60">0.6x Decay</span>
-                </button>
-                <button
-                  id="diff_normal_btn"
-                  onClick={() => handleDifficultyChange('NORMAL')}
-                  className={`p-3 rounded-xl border transition-all text-center flex flex-col items-center justify-center cursor-pointer ${
-                    difficulty === 'NORMAL'
-                      ? 'bg-amber-950/60 border-amber-500 text-amber-300 shadow-lg shadow-amber-950/40 scale-[1.02]'
-                      : 'bg-slate-950/60 border-slate-800/80 text-slate-400 hover:border-slate-700 hover:text-slate-300'
-                  }`}
-                >
-                  <Sun className="w-4 h-4 mb-1 text-amber-400 animate-pulse" />
-                  <span className="text-xs font-black font-mono tracking-wider">NORMAL</span>
-                  <span className="text-[10px] font-mono mt-0.5 opacity-80">100% Start</span>
-                  <span className="text-[9px] font-mono opacity-60">1.0x Decay</span>
-                </button>
-                <button
-                  id="diff_hard_btn"
-                  onClick={() => handleDifficultyChange('HARD')}
-                  className={`p-3 rounded-xl border transition-all text-center flex flex-col items-center justify-center cursor-pointer ${
-                    difficulty === 'HARD'
-                      ? 'bg-rose-950/60 border-rose-500 text-rose-300 shadow-lg shadow-rose-950/40 scale-[1.02]'
-                      : 'bg-slate-950/60 border-slate-800/80 text-slate-500 hover:border-rose-300 hover:text-slate-350'
-                  }`}
-                >
-                  <Moon className="w-4 h-4 mb-1 text-rose-400" />
-                  <span className="text-xs font-black font-mono tracking-wider text-rose-300">SOLSTICE</span>
-                  <span className="text-[10px] font-mono mt-0.5 opacity-80">80% Start</span>
-                  <span className="text-[9px] font-mono opacity-60">1.4x Decay</span>
-                </button>
               </div>
             </div>
 
             {/* Stage Level Picker */}
-            <div className="w-full">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4 text-center">
+            <div className="w-full mb-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 text-center">
                 Select Seasonal Threshold
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 w-full">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 w-full">
                 {LEVELS.map((lvl, index) => {
                   const isUnlocked = unlockedLevels.includes(lvl.id);
                   const highScore = highScores[lvl.id] || 0;
@@ -1613,38 +1563,88 @@ export default function App() {
                     <button
                       key={lvl.id}
                       onClick={() => isUnlocked && selectLevel(index)}
-                      className={`p-3.5 rounded-xl border flex flex-col justify-between text-left transition-all relative group cursor-pointer ${
+                      className={`p-2.5 rounded-xl border flex flex-col justify-between text-left transition-all relative group cursor-pointer ${
                         isUnlocked 
                           ? 'bg-slate-900 border-indigo-500/20 hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10'
                           : 'bg-slate-950 border-slate-900 select-none opacity-45 cursor-not-allowed'
                       }`}
                     >
                       <div>
-                        <span className="text-xxs font-bold text-indigo-400 tracking-widest block uppercase mb-1">
+                        <span className="text-[9px] font-bold text-indigo-400 tracking-widest block uppercase mb-0.5">
                           Stage 0{lvl.id}
                         </span>
-                        <h4 className="text-sm font-bold text-white leading-tight group-hover:text-amber-400 transition">
+                        <h4 className="text-xs font-bold text-white leading-tight group-hover:text-amber-400 transition">
                           {lvl.name}
                         </h4>
-                        <p className="text-[10px] text-slate-400 mt-1 line-clamp-1">{lvl.difficulty}</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5 line-clamp-1">{lvl.difficulty}</p>
                       </div>
 
                       {isUnlocked ? (
-                        <div className="mt-4 flex items-center justify-between">
-                          <span className="text-[10px] bg-indigo-950/80 text-indigo-300 px-1.5 py-0.5 rounded-md border border-indigo-900">
+                        <div className="mt-2.5 flex items-center justify-between">
+                          <span className="text-[9px] bg-indigo-950/80 text-indigo-300 px-1 py-0.2 rounded border border-indigo-900">
                             Hi: {highScore}
                           </span>
-                          <Play className="w-3.5 h-3.5 text-amber-500 group-hover:scale-125 transition" />
+                          <Play className="w-3 h-3 text-amber-500 group-hover:scale-125 transition" />
                         </div>
                       ) : (
-                        <div className="mt-4 flex items-center justify-between">
-                          <span className="text-[10px] text-slate-500 font-medium">Locked</span>
-                          <span className="text-xs">🔒</span>
+                        <div className="mt-2.5 flex items-center justify-between">
+                          <span className="text-[9px] text-slate-500 font-medium">Locked</span>
+                          <span className="text-[10px]">🔒</span>
                         </div>
                       )}
                     </button>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* Quick overview panels (Controls & Mechanics Guide) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 w-full">
+              {/* Controls guide */}
+              <div className="p-3 rounded-xl bg-slate-900/30 border border-slate-800">
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-amber-500 mb-2 flex items-center gap-1.5">
+                  <Compass className="w-3.5 h-3.5" /> Solstice Controls
+                </h4>
+                <ul className="space-y-1 text-xs text-slate-300">
+                  <li className="flex justify-between border-b border-slate-800/30 pb-0.5">
+                    <span>Move Left / Right</span>
+                    <kbd className="px-1.5 py-0.2 rounded bg-slate-800 text-white border border-slate-700 text-[9px] font-mono">A / D or ◀ / ▶</kbd>
+                  </li>
+                  <li className="flex justify-between border-b border-slate-800/30 pb-0.5">
+                    <span>Jump / Double Jump</span>
+                    <kbd className="px-1.5 py-0.2 rounded bg-slate-800 text-white border border-slate-700 text-[9px] font-mono">W or Space</kbd>
+                  </li>
+                  <li className="flex justify-between border-b border-slate-800/30 pb-0.5">
+                    <span>Time Flip (Day ⇄ Night)</span>
+                    <kbd className="px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 font-mono text-[9px] font-bold">Shift or F</kbd>
+                  </li>
+                  <li className="flex justify-between border-b border-slate-800/30 pb-0.5">
+                    <span>Action / Read / Speak</span>
+                    <kbd className="px-1.5 py-0.2 rounded bg-slate-800 text-white border border-slate-700 text-[9px] font-mono">E or Enter</kbd>
+                  </li>
+                  <li className="flex justify-between text-rose-450 text-[10px] italic">
+                    <span>*Actions consume flame daylight!</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Solstice Lore mechanics */}
+              <div className="p-3 rounded-xl bg-slate-900/30 border border-slate-800 flex flex-col justify-between">
+                <div>
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 mb-2 flex items-center gap-1.5">
+                    <HelpCircle className="w-3.5 h-3.5" /> Solstice Mechanics
+                  </h4>
+                  <p className="text-slate-300 text-[11px] leading-snug mb-1">
+                    ☀️ <strong className="text-amber-400 font-semibold">Day World:</strong> Golden barriers active. Sun switches are triggerable.
+                  </p>
+                  <p className="text-slate-300 text-[11px] leading-snug">
+                    🌙 <strong className="text-indigo-400 font-semibold">Night World:</strong> Amethyst hazards/mushrooms emerge for cosmic jumps!
+                  </p>
+                </div>
+                <div className="mt-2.5 pt-1.5 border-t border-slate-800/40 flex items-center justify-between text-[10px] text-slate-400 font-semibold">
+                  <span>✨ Stars boost high score</span>
+                  <span>🔥 Sun fragments prolong your flamelight</span>
+                </div>
               </div>
             </div>
           </div>
