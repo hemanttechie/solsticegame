@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { LEVELS } from './levels';
 import { sound } from './sound';
 import { LevelData, TimeState, GameState, Particle, Player, NPC, Tablet } from './types';
-import { Sun, Moon, Volume2, VolumeX, RotateCcw, Play, Key, Compass, Award, BookOpen, MessageSquare, AlertCircle, HelpCircle } from 'lucide-react';
+import { Sun, Moon, Volume2, VolumeX, RotateCcw, Play, Key, Compass, Award, BookOpen, MessageSquare, AlertCircle, HelpCircle, Info } from 'lucide-react';
+import { NPC_PUZZLES, PuzzleQuestion } from './puzzles';
 
 const TILE_SIZE = 40;
 const GRAVITY = 0.4;
@@ -33,6 +34,24 @@ export default function App() {
   const [activatedSwitches, setActivatedSwitches] = useState<string[]>([]);
   const [playerFlamePulse, setPlayerFlamePulse] = useState<number>(1.0);
 
+  // Solstice Puzzle & Help States
+  const [activePuzzle, setActivePuzzle] = useState<{
+    npcId: string;
+    npcName: string;
+    avatar: string;
+    question: string;
+    options: string[];
+    correctIndex: number;
+    explanation: string;
+    daylightReward: number;
+    selectedIndex: number | null;
+    answered: boolean;
+    isCorrect: boolean | null;
+  } | null>(null);
+
+  const [solvedPuzzles, setSolvedPuzzles] = useState<string[]>([]);
+  const [showHowToPlay, setShowHowToPlay] = useState<boolean>(false);
+
   // AI Dialogues and Lore State
   const [npcDialogue, setNpcDialogue] = useState<{ npcName: string; text: string; mood: string; loading: boolean } | null>(null);
   const [tabletLore, setTabletLore] = useState<{ tabletId: string; text: string; mood: string; loading: boolean } | null>(null);
@@ -47,6 +66,8 @@ export default function App() {
   const timeStateRef = useRef<TimeState>('DAY');
   const daylightRef = useRef<number>(100);
   const scoreRef = useRef<number>(0);
+  const activePuzzleRef = useRef<boolean>(false);
+  const infoOpenRef = useRef<boolean>(false);
   
   const playerRef = useRef<Player>({
     x: 0,
@@ -106,7 +127,9 @@ export default function App() {
     timeStateRef.current = timeState;
     daylightRef.current = daylight;
     scoreRef.current = score;
-  }, [gameState, currentLevelIndex, timeState, daylight, score]);
+    activePuzzleRef.current = activePuzzle !== null;
+    infoOpenRef.current = showHowToPlay;
+  }, [gameState, currentLevelIndex, timeState, daylight, score, activePuzzle, showHowToPlay]);
 
   // Setup level variables & spawn points when starting a new level
   const initLevel = (index: number) => {
@@ -134,6 +157,8 @@ export default function App() {
     setActivatedSwitches([]);
     setNpcDialogue(null);
     setTabletLore(null);
+    setActivePuzzle(null);
+    setShowHowToPlay(false);
     particles.current = [];
     dashCooldown.current = 0;
     
@@ -160,12 +185,141 @@ export default function App() {
     sound.playFlip(false);
   };
 
+  const handlePuzzleAnswer = (optionIndex: number) => {
+    setActivePuzzle(prev => {
+      if (!prev || prev.answered) return prev;
+      const isCorrectChoice = optionIndex === prev.correctIndex;
+      if (isCorrectChoice) {
+        sound.playCollect();
+        setDaylight(d => {
+          const next = Math.min(100, d + prev.daylightReward);
+          daylightRef.current = next;
+          return next;
+        });
+        setSolvedPuzzles(solved => {
+          if (!solved.includes(prev.npcId)) {
+            return [...solved, prev.npcId];
+          }
+          return solved;
+        });
+        return {
+          ...prev,
+          selectedIndex: optionIndex,
+          answered: true,
+          isCorrect: true
+        };
+      } else {
+        sound.playLoss();
+        return {
+          ...prev,
+          selectedIndex: optionIndex,
+          answered: true,
+          isCorrect: false
+        };
+      }
+    });
+  };
+
+  const closePuzzle = () => {
+    setActivePuzzle(null);
+    keysPressed.current = {};
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  };
+
+  const closeHowToPlay = () => {
+    setShowHowToPlay(false);
+    keysPressed.current = {};
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  };
+
+  const toggleHowToPlay = () => {
+    if (showHowToPlay) {
+      closeHowToPlay();
+    } else {
+      setShowHowToPlay(true);
+    }
+  };
+
+  const handleRetryPuzzle = () => {
+    setActivePuzzle(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        selectedIndex: null,
+        answered: false,
+        isCorrect: null
+      };
+    });
+  };
+
   // Keyboard events listeners
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
       keysPressed.current[k] = true;
       keysPressed.current[e.key] = true; // keep both casing
+
+      // If trivia active, trap controls for selections
+      if (activePuzzleRef.current) {
+        if (e.key === '1' || e.key === '2' || e.key === '3') {
+          e.preventDefault();
+          const optionIndex = parseInt(e.key) - 1;
+          handlePuzzleAnswer(optionIndex);
+          return;
+        }
+
+        if (e.key === 'r' || e.key === 'R') {
+          e.preventDefault();
+          handleRetryPuzzle();
+          return;
+        }
+
+        if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          // Close if answered correctly or decided to escape
+          closePuzzle();
+          return;
+        }
+
+        // Support movement keys to dismiss answered puzzles and immediately walk away
+        if (activePuzzle && activePuzzle.answered) {
+          const lowerK = e.key.toLowerCase();
+          if (
+            lowerK === 'a' || lowerK === 'd' || lowerK === 'w' || 
+            e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown'
+          ) {
+            e.preventDefault();
+            closePuzzle();
+            // Retain the movement key as pressed so they immediately move!
+            keysPressed.current[lowerK] = true;
+            keysPressed.current[e.key] = true;
+            return;
+          }
+        }
+        return;
+      }
+
+      // If How to play helper is active
+      if (infoOpenRef.current) {
+        if (e.key === 'Escape' || k === 'h' || k === 'i') {
+          e.preventDefault();
+          closeHowToPlay();
+        }
+        return;
+      }
+
+      // Toggle how to play
+      if (k === 'h' || k === 'i') {
+        if (gameStateRef.current === 'PLAYING') {
+          e.preventDefault();
+          toggleHowToPlay();
+          return;
+        }
+      }
 
       // Shorthand actions
       if (gameStateRef.current === 'PLAYING') {
@@ -211,7 +365,7 @@ export default function App() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [currentLevelIndex]);
+  }, [currentLevelIndex, activePuzzle, showHowToPlay]);
 
   // Jump Controller
   const triggerJump = () => {
@@ -296,6 +450,23 @@ export default function App() {
     );
 
     if (nearNPC) {
+      const puzzle = NPC_PUZZLES[nearNPC.id];
+      if (puzzle) {
+        const isSolved = solvedPuzzles.includes(nearNPC.id);
+        setActivePuzzle({
+          npcId: nearNPC.id,
+          npcName: nearNPC.name,
+          avatar: nearNPC.avatar,
+          question: puzzle.question,
+          options: puzzle.options,
+          correctIndex: puzzle.correctIndex,
+          explanation: puzzle.explanation,
+          daylightReward: puzzle.daylightReward,
+          selectedIndex: isSolved ? puzzle.correctIndex : null,
+          answered: isSolved,
+          isCorrect: isSolved ? true : null
+        });
+      }
       triggerNpcDialogue(nearNPC);
       return;
     }
@@ -550,11 +721,12 @@ export default function App() {
       const p = playerRef.current;
 
       if (gameStateRef.current === 'PLAYING') {
-        // 1. Drains Daylight slowly over time
-        // High levels drain normally, final Sunset level drains extremely fast!
-        const multiplier = level.id === 5 ? 1.4 : 1.0;
-        const currentRate = FLAME_CONSUMPTION_RATE_BASE * multiplier;
-        consumeDaylight(currentRate);
+        if (!activePuzzleRef.current && !infoOpenRef.current) {
+          // 1. Drains Daylight slowly over time
+          // High levels drain normally, final Sunset level drains extremely fast!
+          const multiplier = level.id === 5 ? 1.4 : 1.0;
+          const currentRate = FLAME_CONSUMPTION_RATE_BASE * multiplier;
+          consumeDaylight(currentRate);
 
         // 2. Continuous Ambient stardust and sunset weather drifting in backgrounds
         if (Math.random() < 0.2) {
@@ -727,6 +899,7 @@ export default function App() {
         camera.current.x = Math.max(0, Math.min(level.gridWidth * TILE_SIZE - canvas.width, camera.current.x));
         camera.current.y = Math.max(0, Math.min(level.gridHeight * TILE_SIZE - canvas.height, camera.current.y));
       }
+    }
 
       // RENDER SECTION
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1202,12 +1375,23 @@ export default function App() {
         {/* Dynamic Global Controls */}
         <div className="flex items-center gap-3">
           {gameState === 'PLAYING' && (
-            <div className="hidden md:flex items-center gap-4 mr-4 bg-slate-900/60 hover:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 transition">
-              <span className="text-xs text-slate-400 flex items-center gap-1">
-                <Compass className="w-3.5 h-3.5" /> Stage:
-              </span>
-              <span className="text-sm font-semibold text-white">{LEVELS[currentLevelIndex].name}</span>
-            </div>
+            <>
+              <div className="hidden md:flex items-center gap-4 mr-2 bg-slate-900/60 hover:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 transition">
+                <span className="text-xs text-slate-400 flex items-center gap-1">
+                  <Compass className="w-3.5 h-3.5" /> Stage:
+                </span>
+                <span className="text-sm font-semibold text-white">{LEVELS[currentLevelIndex].name}</span>
+              </div>
+
+              <button
+                id="control_info_btn"
+                onClick={toggleHowToPlay}
+                className="p-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-sky-400 transition-all flex items-center justify-center cursor-pointer"
+                title="How to Play / Solar Lore [H]"
+              >
+                <Info className="w-4 h-4" />
+              </button>
+            </>
           )}
 
           <button
@@ -1398,7 +1582,7 @@ export default function App() {
                   <span className={`text-sm font-black font-mono px-2 py-0.5 rounded ${
                     daylight < 25 ? 'bg-rose-950 text-rose-400 border border-rose-800 animate-pulse' : 'text-amber-400'
                   }`}>
-                    {Math.round(daylight)}%
+                    {Math.max(0, Math.round(LEVELS[currentLevelIndex].baseTimeLimit * (daylight / 100)))}s ({Math.round(daylight)}%)
                   </span>
                 </div>
                 
@@ -1470,13 +1654,182 @@ export default function App() {
               />
 
               {/* Controls Overlay Tips inside corner */}
-              <div className="absolute bottom-4 left-4 bg-slate-950/80 backdrop-blur border border-slate-800 px-3 py-1.5 rounded-lg text-xxs text-slate-300 pointer-events-none flex gap-4">
+              <div className="absolute bottom-4 left-4 bg-slate-950/80 backdrop-blur border border-slate-800 px-3 py-1.5 rounded-lg text-xxs text-slate-300 pointer-events-none flex gap-4 z-10">
                 <span><strong className="text-amber-400">[A/D]</strong> Move</span>
                 <span><strong className="text-amber-400">[W/Space]</strong> Jump</span>
                 <span><strong className="text-pink-500">[Shift/C]</strong> Dash</span>
                 <span><strong className="text-indigo-400">[Q/F]</strong> Time Flip</span>
-                <span><strong className="text-teal-400">[E]</strong> Read/Speak</span>
+                <span><strong className="text-teal-400">[E]</strong> Talk</span>
+                <span><strong className="text-sky-400">[H]</strong> Help</span>
               </div>
+
+              {/* HOW TO PLAY INSTRUCTIONS MODAL */}
+              {showHowToPlay && (
+                <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-6 z-20 animate-in fade-in duration-200">
+                  <div className="bg-gradient-to-b from-indigo-950/90 to-slate-950/95 p-6 rounded-2xl border border-indigo-700/40 max-w-2xl w-full shadow-2xl relative">
+                    <button 
+                      onClick={closeHowToPlay}
+                      className="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-900/65 px-2 py-1 rounded-lg border border-slate-800 text-xs transition cursor-pointer"
+                    >
+                      ✕ Close [H]
+                    </button>
+                    
+                    <div className="flex items-center gap-2 mb-4">
+                      <HelpCircle className="w-5 h-5 text-sky-400" />
+                      <h3 className="text-xl font-bold text-white">How to Play: Solstice Quest</h3>
+                    </div>
+
+                    <div className="space-y-4 text-sm text-slate-300">
+                      <p className="text-xs">
+                        Welcome, Keeper! Your mission is to preserve the cyclical balance by delivering the <strong className="text-amber-400">Solstice Flame</strong> to the goal beacon at the end of each stage.
+                      </p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-905/65 p-4 rounded-xl border border-slate-800/80 text-xs">
+                        <div>
+                          <h4 className="font-bold text-amber-400 text-xxs uppercase tracking-wider mb-2">Controls Guide</h4>
+                          <ul className="space-y-2">
+                            <li className="flex justify-between"><span>Move Left / Right:</span> <span className="font-mono bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 text-[10px]">A / D / ◀ / ▶</span></li>
+                            <li className="flex justify-between"><span>Jump / Double:</span> <span className="font-mono bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 text-[10px]">W / Space</span></li>
+                            <li className="flex justify-between"><span>Time Flip:</span> <span className="font-mono bg-amber-500 text-slate-950 font-bold px-1.5 py-0.5 rounded text-[10px]">Shift / F / Q</span></li>
+                            <li className="flex justify-between"><span>Dash Thrust:</span> <span className="font-mono bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 text-[10px]">Shift / C</span></li>
+                            <li className="flex justify-between"><span>Interact / Talk:</span> <span className="font-mono bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 text-[10px]">E / Enter</span></li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-indigo-400 text-xxs uppercase tracking-wider mb-2">Solstice Mechanics</h4>
+                          <ul className="space-y-1.5 leading-relaxed text-[11px]">
+                            <li>☀️ <strong className="text-amber-300">Day World:</strong> Golden barriers are active; press sun switches during daylight hours.</li>
+                            <li>🌙 <strong className="text-indigo-300">Night World:</strong> Amethyst crystals emerge; step on bouncy mushrooms for celestial heights!</li>
+                            <li>🔄 <strong className="text-pink-400 font-semibold">Tethered Time:</strong> Actions consume daylight energy! Collect sun fragments to refill your flame.</li>
+                          </ul>
+                        </div>
+                      </div>
+
+                      <div className="bg-sky-500/10 border border-sky-500/20 p-3 rounded-lg flex items-start gap-2.5">
+                        <Info className="w-5 h-5 text-sky-400 flex-shrink-0 mt-0.5" />
+                        <div className="text-xs text-sky-200">
+                          <strong className="block text-sky-300 font-bold mb-0.5">☀️ Spiritual Trivia Bonus</strong>
+                          Talk to local NPC spirits (`E` or click on them). If you answer their solar question correctly, you will earn a massive <strong className="text-emerald-400 font-semibold">Daylight Time increase (+25s / +25%!)</strong> to aid your quest!
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 pt-3 border-t border-slate-800/40 text-center">
+                      <button
+                        onClick={closeHowToPlay}
+                        className="px-6 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-bold text-sm shadow-md transition cursor-pointer"
+                      >
+                        Resume Quest
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SOLSTICE SPIRIT TRIVIA PUZZLE OVERLAY */}
+              {activePuzzle && (
+                <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-20 animate-in fade-in duration-200">
+                  <div className="bg-gradient-to-b from-indigo-950/95 to-slate-950/98 p-5 rounded-2xl border border-indigo-500/40 max-w-lg w-full shadow-2xl flex flex-col gap-3">
+                    
+                    <div className="flex items-center gap-3 border-b border-indigo-900/40 pb-2.5">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-955 flex items-center justify-center text-2xl border border-indigo-500/20 animate-pulse">
+                        {activePuzzle.avatar}
+                      </div>
+                      <div>
+                        <h4 className="text-xs uppercase font-bold tracking-widest text-indigo-400">{activePuzzle.npcName}</h4>
+                        <span className="text-xxs text-emerald-400 font-medium">✨ Solstice Spirits Trivia</span>
+                      </div>
+
+                      {activePuzzle.answered && activePuzzle.isCorrect && (
+                        <div className="ml-auto bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xxs px-2 py-0.5 rounded font-black uppercase">
+                          Solved
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="text-slate-300 text-xs italic mb-1">"Help me balance the seasonal cycle, Keeper, and I will intensify your daylight flame..."</p>
+                      <h3 className="text-sm font-bold text-white leading-normal">
+                        {activePuzzle.question}
+                      </h3>
+                    </div>
+
+                    {/* Choices Options List */}
+                    <div className="flex flex-col gap-2 my-1">
+                      {activePuzzle.options.map((option, idx) => {
+                        const isSelected = activePuzzle.selectedIndex === idx;
+                        
+                        let btnStyle = "bg-slate-900/80 hover:bg-slate-800 text-slate-300 border-slate-800";
+                        let indicator = `[${idx + 1}]`;
+
+                        if (activePuzzle.answered) {
+                          if (idx === activePuzzle.correctIndex) {
+                            btnStyle = "bg-emerald-950/80 border-emerald-500/60 text-emerald-300 cursor-default";
+                            indicator = "✓ Correct Answer";
+                          } else if (isSelected) {
+                            btnStyle = "bg-rose-950/85 border-rose-500/60 text-rose-300 cursor-default";
+                            indicator = "✗ Incorrect Choice";
+                          } else {
+                            btnStyle = "bg-slate-950/40 text-slate-600 border-slate-900 opacity-50 cursor-default";
+                          }
+                        }
+
+                        return (
+                          <button
+                            key={idx}
+                            disabled={activePuzzle.answered}
+                            onClick={() => handlePuzzleAnswer(idx)}
+                            className={`p-2.5 rounded-xl border text-xs text-left font-medium transition duration-150 flex items-center justify-between cursor-pointer ${btnStyle}`}
+                          >
+                            <span>{option}</span>
+                            <span className="text-xxs font-mono uppercase tracking-widest bg-slate-950/60 px-1.5 py-0.5 rounded border border-slate-800/40">
+                              {indicator}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Explanations Feedback */}
+                    {activePuzzle.answered && (
+                      <div className={`p-3 rounded-xl border text-xxs leading-relaxed animate-in slide-in-from-bottom duration-200 ${
+                        activePuzzle.isCorrect 
+                          ? 'bg-emerald-500/15 border-emerald-500/20 text-emerald-300' 
+                          : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+                      }`}>
+                        <div className="font-bold mb-0.5 uppercase tracking-wider text-xxs">
+                          {activePuzzle.isCorrect ? "🔥 Solstice Power Intensified!" : "⚡ Incorrect alignment"}
+                        </div>
+                        <p>{activePuzzle.isCorrect ? activePuzzle.explanation : "The spirits' flame gutters... That is not the true celestial alignment. Do not fear, try again to prove your seasonal wisdom!"}</p>
+                        {activePuzzle.isCorrect && (
+                          <span className="block mt-1 font-black text-emerald-400 text-xxs">
+                            Daylight level replenished (+{activePuzzle.daylightReward}% flame power!)
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Bottom row actions */}
+                    <div className="flex gap-3 justify-end border-t border-indigo-900/20 pt-2.5 mt-0.5">
+                      {activePuzzle.answered && !activePuzzle.isCorrect && (
+                        <button
+                          onClick={handleRetryPuzzle}
+                          className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition cursor-pointer"
+                        >
+                          Try Again [R]
+                        </button>
+                      )}
+                      
+                      <button
+                        onClick={closePuzzle}
+                        className="px-3.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 font-medium text-xs transition cursor-pointer"
+                      >
+                        {activePuzzle.isCorrect ? "Continue [Enter]" : "Close [Esc]"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* DYNAMIC LOWER SUB-HUD PANELS (NPC/TABLET VIEWER INTEGRATION) */}

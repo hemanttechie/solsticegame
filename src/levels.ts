@@ -30,7 +30,7 @@ export const LEVELS: LevelData[] = [
     startY: 10,
     beaconX: 37,
     beaconY: 9,
-    baseTimeLimit: 120, // 2 minutes
+    baseTimeLimit: 240, // 4 minutes (increased from 120)
     tiles: (() => {
       const t: { [key: string]: TileType } = {};
       // Solid Ground
@@ -97,7 +97,7 @@ export const LEVELS: LevelData[] = [
     startY: 12,
     beaconX: 47,
     beaconY: 6,
-    baseTimeLimit: 150,
+    baseTimeLimit: 280, // Generous exploration time (increased from 150)
     tiles: (() => {
       const t: { [key: string]: TileType } = {};
       // Starting Shore
@@ -180,7 +180,7 @@ export const LEVELS: LevelData[] = [
     startY: 12,
     beaconX: 56,
     beaconY: 5,
-    baseTimeLimit: 180,
+    baseTimeLimit: 320, // Generous exploration time (increased from 180)
     tiles: (() => {
       const t: { [key: string]: TileType } = {};
       // Grass Floor
@@ -264,7 +264,7 @@ export const LEVELS: LevelData[] = [
     startY: 27,
     beaconX: 27,
     beaconY: 3,
-    baseTimeLimit: 200,
+    baseTimeLimit: 360, // Generous exploration time (increased from 200)
     tiles: (() => {
       const t: { [key: string]: TileType } = {};
       // Ground Floor
@@ -347,7 +347,7 @@ export const LEVELS: LevelData[] = [
     startY: 11,
     beaconX: 61,
     beaconY: 10,
-    baseTimeLimit: 55, // Very short! Drains quick, exciting dash!
+    baseTimeLimit: 125, // Generous time for expert stage (increased from 55)
     tiles: (() => {
       const t: { [key: string]: TileType } = {};
       // Spawner Floor
