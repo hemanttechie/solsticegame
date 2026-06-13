@@ -1,0 +1,8 @@
+{
+  "name": "The Last Minute of Daylight",
+  "description": "A browser-based 2D puzzle-platformer exploring light, darkness, time, and seasonal change, inspired by the June Solstice.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
